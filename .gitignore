@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.log
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/backups/
+.DS_Store
+backend/tsconfig.tsbuildinfo
+*.tsbuildinfo

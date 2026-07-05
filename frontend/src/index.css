@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Lora", ui-serif, Georgia, serif;
+
+  --color-cream: #f7f1e3;
+  --color-cream-dark: #efe4cc;
+  --color-gold: #c9a227;
+  --color-gold-dark: #a9841b;
+  --color-brown: #4a3225;
+  --color-brown-light: #7a5c46;
+  --color-ink: #1a1a1a;
+
+  --color-status-green-bg: #e5f3e6;
+  --color-status-green-text: #256029;
+  --color-status-amber-bg: #fdf1da;
+  --color-status-amber-text: #92620a;
+  --color-status-red-bg: #fbe4e2;
+  --color-status-red-text: #a3281f;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    margin: 0;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    color: var(--color-brown);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-black/5 p-5;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-green {
+    background-color: var(--color-status-green-bg);
+    color: var(--color-status-green-text);
+  }
+  .badge-amber {
+    background-color: var(--color-status-amber-bg);
+    color: var(--color-status-amber-text);
+  }
+  .badge-red {
+    background-color: var(--color-status-red-bg);
+    color: var(--color-status-red-text);
+  }
+  .badge-neutral {
+    @apply bg-black/5 text-brown;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white;
+    background-color: var(--color-gold);
+  }
+  .btn-primary:hover {
+    background-color: var(--color-gold-dark);
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-brown/20 text-brown hover:bg-cream-dark;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-brown hover:bg-black/5;
+  }
+  .input {
+    @apply w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-ink placeholder:text-black/40 focus:outline-none focus:ring-2 focus:ring-gold/50;
+  }
+  .label {
+    @apply block text-xs font-medium text-brown/80 mb-1;
+  }
+}

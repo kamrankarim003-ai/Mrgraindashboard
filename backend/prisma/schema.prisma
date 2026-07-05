@@ -1,0 +1,567 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum CustomerType {
+  restaurant
+  grocery_store
+  supermarket
+  distributor
+  food_service
+  other
+}
+
+enum LeadSource {
+  facebook
+  instagram
+  google_ads
+  referral
+  walk_in
+  phone_call
+  email
+  whatsapp
+  other
+}
+
+enum InterestLevel {
+  cold
+  warm
+  hot
+}
+
+enum CustomerStatus {
+  new_lead
+  contacted
+  quote_sent
+  negotiating
+  active_customer
+  inactive
+  lost
+}
+
+enum NoteType {
+  call
+  email
+  meeting
+  general
+}
+
+enum ProductType {
+  basmati
+  sella
+}
+
+enum BagSize {
+  kg1
+  kg5
+  kg20
+}
+
+enum MovementType {
+  stock_in
+  stock_out
+  adjustment
+}
+
+enum PaymentStatus {
+  unpaid
+  deposit_paid
+  partially_paid
+  paid
+  overdue
+}
+
+enum OrderStatus {
+  draft
+  confirmed
+  packed
+  dispatched
+  delivered
+  completed
+  cancelled
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  viewed
+  partially_paid
+  paid
+  overdue
+  cancelled
+}
+
+enum PaymentMethod {
+  bank_transfer
+  cash
+  card
+  other
+}
+
+enum ExpenseCategory {
+  stock_purchase
+  packaging
+  warehouse
+  rent
+  delivery_fuel
+  marketing
+  staff_wages
+  software
+  accountant
+  bank_fees
+  other
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TaskStatus {
+  not_started
+  in_progress
+  waiting
+  completed
+  cancelled
+}
+
+enum RelatedType {
+  customer
+  order
+  invoice
+  campaign
+}
+
+enum Recurrence {
+  none
+  daily
+  weekly
+  monthly
+}
+
+enum EmailRelatedType {
+  customer
+  order
+  invoice
+  quote
+}
+
+enum EmailStatus {
+  sent
+  failed
+}
+
+enum AttachmentRelatedType {
+  expense
+  customer
+  order
+  invoice
+}
+
+// ---------- Models ----------
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  users       User[]
+  permissions Permission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id         Int      @id @default(autoincrement())
+  roleId     Int      @map("role_id")
+  moduleName String   @map("module_name")
+  canView    Boolean  @default(false) @map("can_view")
+  canCreate  Boolean  @default(false) @map("can_create")
+  canEdit    Boolean  @default(false) @map("can_edit")
+  canDelete  Boolean  @default(false) @map("can_delete")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  role       Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([roleId, moduleName])
+  @@map("permissions")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  phone        String?
+  passwordHash String    @map("password_hash")
+  roleId       Int       @map("role_id")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  resetToken       String?   @map("reset_token")
+  resetTokenExpiry DateTime? @map("reset_token_expiry")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  role Role @relation(fields: [roleId], references: [id])
+
+  assignedCustomers   Customer[]      @relation("AssignedUser")
+  createdCustomers    Customer[]      @relation("CreatedByUser")
+  customerNotes       CustomerNote[]
+  inventoryMovements  InventoryMovement[]
+  assignedOrders      Order[]         @relation("AssignedOrderUser")
+  createdOrders       Order[]         @relation("CreatedOrderUser")
+  createdInvoices     Invoice[]
+  recordedPayments    Payment[]
+  enteredExpenses     Expense[]
+  assignedTasks       Task[]          @relation("AssignedTaskUser")
+  createdTasks        Task[]          @relation("CreatedTaskUser")
+  notifications       Notification[]
+  emailLogs           EmailLog[]
+  attachments         Attachment[]
+  activityLogs        ActivityLog[]
+
+  @@map("users")
+}
+
+model Customer {
+  id              String         @id @default(uuid())
+  businessName    String         @map("business_name")
+  contactPerson   String?        @map("contact_person")
+  phone           String?
+  email           String?
+  address         String?
+  suburb          String?
+  state           String?
+  postcode        String?
+  customerType    CustomerType   @map("customer_type")
+  leadSource      LeadSource     @map("lead_source")
+  interestLevel   InterestLevel  @default(warm) @map("interest_level")
+  status          CustomerStatus @default(new_lead)
+  assignedUserId  String?        @map("assigned_user_id")
+  tags            String[]       @default([])
+  notes           String?
+  lastContactedAt DateTime?      @map("last_contacted_at")
+  nextFollowupAt  DateTime?      @map("next_followup_at")
+  lostReason      String?        @map("lost_reason")
+  createdBy       String?        @map("created_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  assignedUser User? @relation("AssignedUser", fields: [assignedUserId], references: [id])
+  creator      User? @relation("CreatedByUser", fields: [createdBy], references: [id])
+
+  customerNotes CustomerNote[]
+  orders        Order[]
+  invoices      Invoice[]
+  payments      Payment[]
+
+  @@map("customers")
+}
+
+model CustomerNote {
+  id         String   @id @default(uuid())
+  customerId String   @map("customer_id")
+  userId     String   @map("user_id")
+  noteText   String   @map("note_text")
+  noteType   NoteType @default(general) @map("note_type")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@map("customer_notes")
+}
+
+model Product {
+  id             String    @id @default(uuid())
+  productName    String    @map("product_name")
+  productType    ProductType @map("product_type")
+  bagSize        BagSize   @map("bag_size")
+  sku            String    @unique
+  stockBags      Int       @default(0) @map("stock_bags")
+  stockKg        Decimal   @default(0) @map("stock_kg") @db.Decimal(12, 2)
+  costPrice      Decimal   @map("cost_price") @db.Decimal(12, 2)
+  wholesalePrice Decimal   @map("wholesale_price") @db.Decimal(12, 2)
+  lowStockLevel  Int       @default(10) @map("low_stock_level")
+  imageUrl       String?   @map("image_url")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  inventoryMovements InventoryMovement[]
+  orderItems         OrderItem[]
+  invoiceItems        InvoiceItem[]
+
+  @@map("products")
+}
+
+model InventoryMovement {
+  id             String       @id @default(uuid())
+  productId      String       @map("product_id")
+  movementType   MovementType @map("movement_type")
+  quantityBags   Int          @map("quantity_bags")
+  quantityKg     Decimal      @map("quantity_kg") @db.Decimal(12, 2)
+  relatedOrderId String?      @map("related_order_id")
+  notes          String?
+  userId         String       @map("user_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  product      Product @relation(fields: [productId], references: [id])
+  relatedOrder Order?  @relation(fields: [relatedOrderId], references: [id])
+  user         User    @relation(fields: [userId], references: [id])
+
+  @@map("inventory_movements")
+}
+
+model Order {
+  id               String        @id @default(uuid())
+  orderNumber      String        @unique @map("order_number")
+  customerId       String        @map("customer_id")
+  contactPerson    String?       @map("contact_person")
+  deliveryAddress  String?       @map("delivery_address")
+  deliveryDate     DateTime?     @map("delivery_date")
+  deliveryNotes    String?       @map("delivery_notes")
+  paymentStatus    PaymentStatus @default(unpaid) @map("payment_status")
+  orderStatus      OrderStatus   @default(draft) @map("order_status")
+  assignedUserId   String?       @map("assigned_user_id")
+  invoiceId        String?       @unique @map("invoice_id")
+  internalNotes    String?       @map("internal_notes")
+  discount         Decimal       @default(0) @map("discount") @db.Decimal(12, 2)
+  gstApplicable    Boolean       @default(true) @map("gst_applicable")
+  totalValue       Decimal       @default(0) @map("total_value") @db.Decimal(12, 2)
+  createdBy        String?       @map("created_by")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  customer     Customer @relation(fields: [customerId], references: [id])
+  assignedUser User?    @relation("AssignedOrderUser", fields: [assignedUserId], references: [id])
+  creator      User?    @relation("CreatedOrderUser", fields: [createdBy], references: [id])
+  invoice      Invoice? @relation(fields: [invoiceId], references: [id])
+
+  items              OrderItem[]
+  inventoryMovements InventoryMovement[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String   @id @default(uuid())
+  orderId       String   @map("order_id")
+  productId     String   @map("product_id")
+  quantityBags  Int      @map("quantity_bags")
+  quantityKg    Decimal  @map("quantity_kg") @db.Decimal(12, 2)
+  pricePerKg    Decimal  @map("price_per_kg") @db.Decimal(12, 2)
+  pricePerBag   Decimal  @map("price_per_bag") @db.Decimal(12, 2)
+  subtotal      Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  invoiceNumber  String        @unique @map("invoice_number")
+  orderId        String?       @unique @map("order_id")
+  customerId     String        @map("customer_id")
+  subtotal       Decimal       @default(0) @db.Decimal(12, 2)
+  gstAmount      Decimal       @default(0) @map("gst_amount") @db.Decimal(12, 2)
+  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(12, 2)
+  amountPaid     Decimal       @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  balanceDue     Decimal       @default(0) @map("balance_due") @db.Decimal(12, 2)
+  dueDate        DateTime?     @map("due_date")
+  paymentTerms   String?       @map("payment_terms")
+  status         InvoiceStatus @default(draft)
+  notes          String?
+  createdBy      String?       @map("created_by")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  creator  User?    @relation(fields: [createdBy], references: [id])
+  order    Order?
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String   @map("invoice_id")
+  productId   String?  @map("product_id")
+  description String
+  quantity    Decimal  @db.Decimal(12, 2)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  subtotal    Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("invoice_items")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  invoiceId     String        @map("invoice_id")
+  customerId    String        @map("customer_id")
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentDate   DateTime      @map("payment_date")
+  paymentMethod PaymentMethod @map("payment_method")
+  referenceNote String?       @map("reference_note")
+  recordedBy    String?       @map("recorded_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  recorder User?    @relation(fields: [recordedBy], references: [id])
+
+  @@map("payments")
+}
+
+model Expense {
+  id             String          @id @default(uuid())
+  date           DateTime
+  category       ExpenseCategory
+  supplierName   String?         @map("supplier_name")
+  amount         Decimal         @db.Decimal(12, 2)
+  gstIncluded    Boolean         @default(false) @map("gst_included")
+  paymentMethod  PaymentMethod?  @map("payment_method")
+  receiptFileUrl String?         @map("receipt_file_url")
+  notes          String?
+  enteredBy      String?         @map("entered_by")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  enteredByUser User? @relation(fields: [enteredBy], references: [id])
+
+  @@map("expenses")
+}
+
+model Task {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?
+  assignedTo   String?      @map("assigned_to")
+  priority     TaskPriority @default(medium)
+  dueDate      DateTime?    @map("due_date")
+  status       TaskStatus   @default(not_started)
+  relatedType  RelatedType? @map("related_type")
+  relatedId    String?      @map("related_id")
+  recurrence   Recurrence   @default(none)
+  reminderAt   DateTime?    @map("reminder_at")
+  notes        String?
+  createdBy    String?      @map("created_by")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  assignee User? @relation("AssignedTaskUser", fields: [assignedTo], references: [id])
+  creator  User? @relation("CreatedTaskUser", fields: [createdBy], references: [id])
+
+  @@map("tasks")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String
+  message     String
+  relatedType String?  @map("related_type")
+  relatedId   String?  @map("related_id")
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model EmailLog {
+  id            String           @id @default(uuid())
+  relatedType   EmailRelatedType @map("related_type")
+  relatedId     String           @map("related_id")
+  recipientEmail String          @map("recipient_email")
+  subject       String
+  bodySnapshot  String           @map("body_snapshot")
+  sentAt        DateTime?        @map("sent_at")
+  status        EmailStatus
+  sentBy        String?          @map("sent_by")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  sender User? @relation(fields: [sentBy], references: [id])
+
+  @@map("email_logs")
+}
+
+model Attachment {
+  id          String                @id @default(uuid())
+  relatedType AttachmentRelatedType @map("related_type")
+  relatedId   String                @map("related_id")
+  fileName    String                @map("file_name")
+  fileUrl     String                @map("file_url")
+  uploadedBy  String?               @map("uploaded_by")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  uploader User? @relation(fields: [uploadedBy], references: [id])
+
+  @@map("attachments")
+}
+
+model Settings {
+  id                  Int      @id @default(autoincrement())
+  businessName        String   @map("business_name")
+  abn                 String?
+  businessAddress     String?  @map("business_address")
+  businessEmail       String?  @map("business_email")
+  businessPhone       String?  @map("business_phone")
+  logoUrl             String?  @map("logo_url")
+  bankDetails         String?  @map("bank_details")
+  gstRegistered       Boolean  @default(true) @map("gst_registered")
+  defaultPaymentTerms String?  @map("default_payment_terms")
+  invoicePrefix       String   @default("INV-") @map("invoice_prefix")
+  quotePrefix         String   @default("QUO-") @map("quote_prefix")
+  orderPrefix         String   @default("ORD-") @map("order_prefix")
+  invoiceNextNumber   Int      @default(1000) @map("invoice_next_number")
+  orderNextNumber     Int      @default(1000) @map("order_next_number")
+  quoteNextNumber     Int      @default(1000) @map("quote_next_number")
+  expenseCategories   String[] @default([]) @map("expense_categories")
+  productTypes        String[] @default([]) @map("product_types")
+  emailTemplates      Json?    @map("email_templates")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
